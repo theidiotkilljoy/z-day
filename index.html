@@ -75,40 +75,8 @@
       <div class="panel">
         <div class="subtitle">roll for initiative</div>
         <div class="d20-wrap">
-          <!-- Clickable D20 — always lands on 32 -->
-          <svg id="die" class="d20" viewBox="0 0 512 512" aria-label="D20 die — click to roll">
-            <!-- Outer icosahedron silhouette -->
-            <defs>
-              <linearGradient id="grad" x1="0" x2="1" y1="0" y2="1">
-                <stop offset="0%" stop-color="#2c2f47"/>
-                <stop offset="100%" stop-color="#161a2a"/>
-              </linearGradient>
-              <linearGradient id="edge" x1="0" y1="0" x2="1" y2="1">
-                <stop offset="0%" stop-color="#7cffb8" stop-opacity=".85"/>
-                <stop offset="100%" stop-color="#b48bff" stop-opacity=".85"/>
-              </linearGradient>
-              <filter id="glow">
-                <feGaussianBlur stdDeviation="6" result="b"/>
-                <feMerge>
-                  <feMergeNode in="b"/><feMergeNode in="SourceGraphic"/>
-                </feMerge>
-              </filter>
-            </defs>
-            <polygon points="256,16 480,160 400,464 112,464 32,160" fill="url(#grad)" stroke="url(#edge)" stroke-width="6" filter="url(#glow)"/>
-            <!-- Facet lines for retro vibe -->
-            <g stroke="#2f3650" stroke-width="2" opacity=".9">
-              <line x1="256" y1="16" x2="256" y2="496"/>
-              <line x1="32" y1="160" x2="480" y2="160"/>
-              <line x1="112" y1="464" x2="400" y2="464"/>
-              <line x1="32" y1="160" x2="112" y2="464"/>
-              <line x1="480" y1="160" x2="400" y2="464"/>
-            </g>
-            <!-- Number display (center) -->
-            <g id="numGroup">
-              <text id="num" x="256" y="290" text-anchor="middle" font-size="120" font-weight="900" fill="#eafdf5" class="glow">20</text>
-              <text id="caption" x="256" y="330" text-anchor="middle" font-size="18" fill="#a7ffdf" opacity=".0">(…rolling…)</text>
-            </g>
-          </svg>
+          <!-- True 3D D20 (WebGL/Three.js) — always “rolls” to 32 result label -->
+          <div id="d20Canvas" aria-label="D20 die — click to roll" class="d20" role="img"></div>
           <div class="hint pixel">click the die</div>
           <div class="rollout" id="rollout"></div>
         </div>
@@ -168,5 +136,103 @@
       fauxRollToThirtyTwo();
     });
   </script>
+  <script src="https://unpkg.com/three@0.158.0/build/three.min.js"></script>
+  <script>
+    const container = document.getElementById('d20Canvas');
+    const rollout = document.getElementById('rollout');
+    const enterBtn = document.getElementById('enterBtn');
+    let rolled = false;
+
+    // --- Scene setup ---
+    const scene = new THREE.Scene();
+    const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+    container.appendChild(renderer.domElement);
+
+    const camera = new THREE.PerspectiveCamera(30, 16/9, 0.1, 100);
+    camera.position.set(0, 0.8, 5.5);
+
+    // Resize handling
+    function resize(){
+      const w = Math.min(window.innerWidth*0.7, 880);
+      const h = w * 9/16;
+      renderer.setSize(w, h);
+      camera.aspect = w/h; camera.updateProjectionMatrix();
+    }
+    window.addEventListener('resize', resize);
+
+    // Lighting
+    const amb = new THREE.AmbientLight(0xffffff, 0.5); scene.add(amb);
+    const key = new THREE.DirectionalLight(0xb48bff, 1.1); key.position.set(3,4,2); scene.add(key);
+    const rim = new THREE.DirectionalLight(0x7cffb8, 0.9); rim.position.set(-3,2,-2); scene.add(rim);
+
+    // D20 geometry & materials
+    const geo = new THREE.IcosahedronGeometry(1.2, 0); // 20 faces
+    const mat = new THREE.MeshStandardMaterial({ color: 0x1a1f33, metalness: 0.4, roughness: 0.2 });
+    const mesh = new THREE.Mesh(geo, mat); scene.add(mesh);
+
+    // Edge glow wireframe
+    const edges = new THREE.EdgesGeometry(geo);
+    const edgeMat = new THREE.LineBasicMaterial({ color: 0x9be9cc, linewidth: 1 });
+    const edgeLines = new THREE.LineSegments(edges, edgeMat); scene.add(edgeLines);
+
+    // Soft background particles for fantasy vibe
+    const stars = new THREE.Group(); scene.add(stars);
+    for(let i=0;i<180;i++){
+      const s = new THREE.Sprite(new THREE.SpriteMaterial({ color: 0xffffff, opacity: 0.15 }));
+      s.position.set((Math.random()-0.5)*8, (Math.random()-0.5)*4.5, (Math.random()-0.5)*4);
+      s.scale.setScalar(Math.random()*0.04+0.01); stars.add(s);
+    }
+
+    // Idle rotation
+    let t0 = performance.now();
+    let spinning = true;
+
+    function animate(now){
+      const dt = (now - t0)/1000; t0 = now;
+      if(spinning){
+        mesh.rotation.y += dt*0.6; mesh.rotation.x += dt*0.25;
+        edgeLines.rotation.copy(mesh.rotation);
+      }
+      renderer.render(scene, camera);
+      requestAnimationFrame(animate);
+    }
+
+    // Click-to-roll (scripted to land on result 32 label)
+    function fauxRoll(){
+      if(rolled) return;
+      rolled = true;
+      spinning = false;
+
+      const startRot = mesh.rotation.clone();
+      const endRot = new THREE.Euler(startRot.x + Math.PI*2, startRot.y + Math.PI*2, startRot.z + Math.PI*1.5);
+      const dur = 1800; const tStart = performance.now();
+
+      function step(now){
+        const t = Math.min(1, (now - tStart)/dur);
+        const ease = t<.5?2*t*t:-1+(4-2*t)*t; // easeInOutQuad
+        mesh.rotation.set(
+          startRot.x + (endRot.x - startRot.x)*ease,
+          startRot.y + (endRot.y - startRot.y)*ease,
+          startRot.z + (endRot.z - startRot.z)*ease
+        );
+        edgeLines.rotation.copy(mesh.rotation);
+        if(t < 1){ requestAnimationFrame(step); }
+        else finalize();
+      }
+      requestAnimationFrame(step);
+    }
+
+    function finalize(){
+      rollout.innerHTML = '<span class="glow">You rolled: 32</span>';
+      document.getElementById('die')?.classList?.remove('d20'); // if leftover
+      enterBtn.classList.add('show');
+    }
+
+    container.addEventListener('click', fauxRoll);
+
+    // Initial layout
+    resize(); requestAnimationFrame(animate);
+  </script>
 </body>
 </html>
+
