@@ -17,23 +17,25 @@
       overflow:hidden;
     }
     .crt:before{ content:""; position:fixed; inset:0; pointer-events:none; background:linear-gradient(rgba(255,255,255,.03),rgba(0,0,0,0) 2px); background-size:100% 3px; mix-blend-mode:overlay; opacity:.4; }
-    .wrap{height:100%;display:grid;grid-template-rows:auto 1fr auto;gap:18px;}
-    header{display:grid;place-items:center;padding-top:24px}
-    h1{ margin:0; font-weight:900; letter-spacing:.5px; text-transform:lowercase; font-size:clamp(28px,5vw,56px); text-shadow:0 2px 0 #000, 0 0 24px rgba(180,139,255,.15); }
+    .wrap{height:100%;display:grid;grid-template-rows:auto 1fr auto;gap:8px;} /* tighter */
+    header{display:grid;place-items:center;padding-top:8px} /* tighter */
+    h1{ margin:0; font-weight:900; letter-spacing:.5px; text-transform:lowercase; font-size:clamp(28px,5vw,54px); text-shadow:0 2px 0 #000, 0 0 24px rgba(180,139,255,.12); }
     main{display:grid;place-items:center}
-    .panel{ background:linear-gradient(180deg, rgba(255,255,255,.06), rgba(255,255,255,.02)); border:1px solid var(--edge); border-radius:16px; padding:24px 28px; box-shadow:inset 0 0 40px rgba(0,0,0,.35), 0 24px 80px rgba(0,0,0,.55); max-width:min(94vw,900px); text-align:center; }
-    .subtitle{opacity:.9;margin:8px 0 18px;font-size:clamp(14px,2.4vw,18px)}
-    .d20-wrap{display:grid;place-items:center;gap:10px}
+    .panel{ background:linear-gradient(180deg, rgba(255,255,255,.06), rgba(255,255,255,.02)); border:1px solid var(--edge); border-radius:16px; padding:16px 18px; box-shadow:inset 0 0 40px rgba(0,0,0,.35), 0 24px 80px rgba(0,0,0,.55); max-width:min(94vw,900px); text-align:center; }
+    .subtitle{opacity:.9;margin:2px 0 8px;font-size:clamp(14px,2.4vw,18px)}
+    .d20-wrap{display:grid;place-items:center;gap:6px}
     .d20{width:min(70vw,420px);height:auto;cursor:pointer;filter:drop-shadow(0 10px 30px rgba(0,0,0,.6));transition:transform .2s ease}
-    .d20:hover{transform:translateY(-2px) scale(1.01)}
-    .hint{font-size:12px;opacity:.7}
-    footer{display:grid;place-items:center;padding:0 0 24px}
-    .enter{ display:none; background:linear-gradient(180deg, #1a2030, #0f1320); border:1px solid #2a334a; color:var(--text); font-weight:700; text-transform:uppercase; letter-spacing:.08em; padding:14px 20px; border-radius:12px; cursor:pointer; box-shadow:0 12px 30px rgba(0,0,0,.5), inset 0 0 20px rgba(124,255,184,.12); text-decoration:none; }
-    .enter:focus{outline:2px solid #7cffb8; outline-offset:3px}
+    .d20:hover{transform:translateY(-1px) scale(1.005)}
+    .hint{font-size:12px;opacity:.7;margin-top:2px}
+    footer{display:grid;place-items:center;padding:0 0 18px}
+    .enter{ display:none; background:linear-gradient(180deg, #1a2030, #0f1320); border:1px solid #2a334a; color:var(--text); font-weight:700; text-transform:uppercase; letter-spacing:.08em; padding:12px 18px; border-radius:12px; cursor:pointer; box-shadow:0 12px 30px rgba(0,0,0,.5), inset 0 0 20px rgba(166,0,0,.12); text-decoration:none; }
+    .enter:focus{outline:2px solid #ff8080; outline-offset:3px}
     .enter.show{display:inline-block; animation:pop .35s ease}
     @keyframes pop{0%{transform:scale(.9);opacity:.0}100%{transform:scale(1);opacity:1}}
     .pixel{font-family: "Press Start 2P", monospace, ui-monospace; font-size: clamp(12px, 2.2vw, 14px)}
     @font-face{font-family:"Press Start 2P"; src: local("Press Start 2P");}
+    /* Make WebGL canvas square and ensure it's not clipped */
+    #d20Canvas canvas{ display:block; width:100% !important; height:auto !important; }
   </style>
 </head>
 <body class="crt">
@@ -66,7 +68,7 @@
     let rolled = false;
     const easeInOut = t => t<.5 ? 2*t*t : -1+(4-2*t)*t;
 
-    // ——— SVG FALLBACK (flat die with #A60000 shades + number on face) ———
+    // ——— SVG FALLBACK (flat die with #A60000 shades + centered number) ———
     function mountSVGDie(){
       container.innerHTML = `
         <svg id="svgDie" class="d20" viewBox="0 0 512 512" aria-label="D20 die (SVG)">
@@ -86,7 +88,7 @@
             <line x1="32" y1="160" x2="112" y2="464"/>
             <line x1="480" y1="160" x2="400" y2="464"/>
           </g>
-          <text id="num" x="256" y="300" text-anchor="middle" font-size="140" font-weight="900" fill="#ffffff" style="paint-order: stroke; stroke: #200; stroke-width: 10px;">20</text>
+          <text id="num" x="256" y="276" text-anchor="middle" font-size="160" font-weight="900" fill="#ffffff" style="paint-order: stroke; stroke: #200; stroke-width: 12px;">20</text>
         </svg>`;
 
       const svg = document.getElementById('svgDie');
@@ -94,7 +96,7 @@
 
       function roll(){
         const keyframes = [3,14,7,18,11,19,9,15,6,12,17,8,13,10,16,5,4,2,1,20,32];
-        const total = 1500; const start = performance.now();
+        const total = 1200; const start = performance.now();
         function step(now){
           const t = Math.min(1,(now-start)/total); const idx = Math.floor(easeInOut(t)*(keyframes.length-1));
           num.textContent = keyframes[idx];
@@ -103,14 +105,11 @@
         }
         requestAnimationFrame(step);
       }
-      function finalize(){
-        num.textContent = '32';
-        enterBtn.classList.add('show');
-      }
+      function finalize(){ num.textContent = '32'; enterBtn.classList.add('show'); }
       container.addEventListener('click', ()=>{ if(!rolled){ rolled = true; roll(); } });
     }
 
-    // ——— THREE.JS (3D) ———
+    // ——— THREE.JS (3D) with true face landing + centered face label ———
     function mountThreeDie(){
       let renderer;
       try{ renderer = new THREE.WebGLRenderer({ antialias:true, alpha:true }); }catch(e){ return false; }
@@ -118,46 +117,70 @@
       container.innerHTML = ''; container.appendChild(renderer.domElement);
 
       const scene = new THREE.Scene();
-      const camera = new THREE.PerspectiveCamera(30, 16/9, 0.1, 100); camera.position.set(0,0.8,5.5);
+      const camera = new THREE.PerspectiveCamera(32, 1, 0.1, 100); // square view
+      camera.position.set(0,0.6,5.2);
 
+      // Lights
       const hemi = new THREE.HemisphereLight(0xfff0f0, 0x080808, 0.7); scene.add(hemi);
       const key = new THREE.DirectionalLight(0xffffff, 1.0); key.position.set(3,4,2); scene.add(key);
       const rim = new THREE.DirectionalLight(0xffaaaa, 0.8); rim.position.set(-3,2,-2); scene.add(rim);
 
+      // Geometry
       const geo = new THREE.IcosahedronGeometry(1.2,0);
-      const mat = new THREE.MeshStandardMaterial({ color:0xA60000, metalness:0.4, roughness:0.3 });
+      const mat = new THREE.MeshStandardMaterial({ color:0xA60000, metalness:0.45, roughness:0.34 });
       const mesh = new THREE.Mesh(geo,mat); scene.add(mesh);
       const edges = new THREE.EdgesGeometry(geo);
       const edgeMat = new THREE.LineBasicMaterial({ color:0x3a0000 });
       const edgeLines = new THREE.LineSegments(edges, edgeMat); scene.add(edgeLines);
 
-      // Number on the face (sprite that hugs the front face)
-      const labelTex = (()=>{
-        const c = document.createElement('canvas'); c.width = c.height = 512; const ctx = c.getContext('2d');
-        // subtle radial shadow like Google dice
-        const grad = ctx.createRadialGradient(256,256,40, 256,256,256);
-        grad.addColorStop(0,'rgba(0,0,0,0)'); grad.addColorStop(1,'rgba(0,0,0,0.18)');
-        ctx.fillStyle = grad; ctx.beginPath(); ctx.arc(256,256,256,0,Math.PI*2); ctx.fill();
-        ctx.font = '900 300px system-ui, Segoe UI, Roboto, Arial'; ctx.fillStyle = '#fff'; ctx.textAlign='center'; ctx.textBaseline='middle';
-        ctx.lineWidth = 18; ctx.strokeStyle = '#200'; ctx.strokeText('20',256,280); ctx.fillText('20',256,280);
-        return new THREE.CanvasTexture(c);
-      })();
-      const labelMat = new THREE.SpriteMaterial({ map: labelTex, depthTest: false, depthWrite: false, transparent:true });
-      const label = new THREE.Sprite(labelMat); label.scale.set(1.2,1.2,1.2); label.position.set(0,0,1.21); scene.add(label);
-
-      function setLabel(n){
-        const ctx = labelTex.image.getContext('2d');
-        ctx.clearRect(0,0,512,512);
-        const grad = ctx.createRadialGradient(256,256,40, 256,256,256);
-        grad.addColorStop(0,'rgba(0,0,0,0)'); grad.addColorStop(1,'rgba(0,0,0,0.18)');
-        ctx.fillStyle = grad; ctx.beginPath(); ctx.arc(256,256,256,0,Math.PI*2); ctx.fill();
-        ctx.font = '900 300px system-ui, Segoe UI, Roboto, Arial'; ctx.fillStyle = '#fff'; ctx.textAlign='center'; ctx.textBaseline='middle';
-        ctx.lineWidth = 18; ctx.strokeStyle = '#200'; ctx.strokeText(String(n),256,280); ctx.fillText(String(n),256,280);
-        labelTex.needsUpdate = true;
+      // Compute faces data (centroids, normals) from BufferGeometry
+      const pos = geo.attributes.position; const index = geo.index;
+      const faces = [];
+      for(let i=0;i<index.count;i+=3){
+        const a=index.getX(i), b=index.getX(i+1), c=index.getX(i+2);
+        const va=new THREE.Vector3().fromBufferAttribute(pos,a);
+        const vb=new THREE.Vector3().fromBufferAttribute(pos,b);
+        const vc=new THREE.Vector3().fromBufferAttribute(pos,c);
+        const centroid=new THREE.Vector3().addVectors(va,vb).add(vc).multiplyScalar(1/3);
+        const normal=new THREE.Vector3().subVectors(vb,va).cross(new THREE.Vector3().subVectors(vc,va)).normalize();
+        const edgeLen = va.distanceTo(vb); // equilateral
+        faces.push({a,b,c,centroid,normal,edge:edgeLen});
       }
+      // Choose a landing face near the front initially (normal ~ +Z)
+      const front = new THREE.Vector3(0,0,1);
+      let landing = 0; let best=-Infinity;
+      faces.forEach((f,i)=>{ const s=f.normal.dot(front); if(s>best){best=s; landing=i;} });
 
+      // Number label as a plane that hugs the landing face
+      const labelCanvas = document.createElement('canvas'); labelCanvas.width=labelCanvas.height=512; const lctx=labelCanvas.getContext('2d');
+      function drawLabel(n){
+        lctx.clearRect(0,0,512,512);
+        // soft inner shadow vignette like Google
+        const g=lctx.createRadialGradient(256,256,40,256,256,256); g.addColorStop(0,'rgba(0,0,0,0)'); g.addColorStop(1,'rgba(0,0,0,0.25)');
+        lctx.fillStyle=g; lctx.beginPath(); lctx.arc(256,256,256,0,Math.PI*2); lctx.fill();
+        lctx.font='900 300px system-ui, Segoe UI, Roboto, Arial'; lctx.textAlign='center'; lctx.textBaseline='middle';
+        lctx.lineWidth=18; lctx.strokeStyle='#200'; lctx.fillStyle='#fff';
+        lctx.strokeText(String(n),256,280); lctx.fillText(String(n),256,280);
+      }
+      drawLabel(20);
+      const labelTex = new THREE.CanvasTexture(labelCanvas);
+      const labelMat = new THREE.MeshBasicMaterial({ map:labelTex, transparent:true, depthTest:true, depthWrite:false, side:THREE.DoubleSide });
+      const labelPlane = new THREE.Mesh(new THREE.PlaneGeometry(1,1), labelMat);
+      mesh.add(labelPlane); // parent to die so it follows motion
+
+      // Place the label plane on the landing face
+      const lf = faces[landing];
+      const planeSize = lf.edge * 0.95; // a bit inside edges
+      labelPlane.scale.set(planeSize, planeSize, 1);
+      // Build quaternion that orients +Z to face normal
+      const q = new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0,0,1), lf.normal.clone().normalize());
+      labelPlane.quaternion.copy(q);
+      labelPlane.position.copy(lf.centroid.clone().add(lf.normal.clone().multiplyScalar(0.02))); // slight offset to avoid z-fight
+
+      // Sizing: square canvas to avoid clipping
       function resize(){
-        const w = Math.min(container.clientWidth || 420, 880); const h = Math.round(w * 9/16);
+        const w = Math.min(container.clientWidth || 420, 580); // slightly larger
+        const h = w; // square
         renderer.setSize(w,h,false); camera.aspect = w/h; camera.updateProjectionMatrix();
       }
       window.addEventListener('resize', resize); resize();
@@ -170,19 +193,35 @@
       }
       requestAnimationFrame(animate);
 
+      // Rotate the die so the landing face points to camera and number centers on that face
+      function alignFaceToCamera(face){
+        // current world quaternion
+        const worldQ = mesh.quaternion.clone();
+        // desired orientation: face.normal -> +Z
+        const targetQ = new THREE.Quaternion().setFromUnitVectors(face.normal.clone().applyQuaternion(worldQ), new THREE.Vector3(0,0,1));
+        mesh.quaternion.multiply(targetQ);
+        edgeLines.quaternion.copy(mesh.quaternion);
+      }
+
       function roll(){
         const seq = [3,14,7,18,11,19,9,15,6,12,17,8,13,10,16,5,4,2,1,20,32];
-        const total = 1500; const start = performance.now();
+        const total = 1100; const start = performance.now();
         function step(now){
           const t = Math.min(1,(now-start)/total); const idx = Math.floor(easeInOut(t)*(seq.length-1));
-          setLabel(seq[idx]);
+          drawLabel(seq[idx]); labelTex.needsUpdate = true;
           mesh.rotation.set(mesh.rotation.x + 0.12, mesh.rotation.y + 0.22, mesh.rotation.z + 0.18);
           edgeLines.rotation.copy(mesh.rotation);
           if(t<1) requestAnimationFrame(step); else finalize();
         }
         requestAnimationFrame(step);
       }
-      function finalize(){ setLabel(32); enterBtn.classList.add('show'); }
+
+      function finalize(){
+        drawLabel(32); labelTex.needsUpdate = true;
+        // Snap so a full face is centered to camera
+        alignFaceToCamera(faces[landing]);
+        enterBtn.classList.add('show');
+      }
 
       container.addEventListener('click', ()=>{ if(!rolled){ rolled = true; spinning = false; roll(); }});
       return true;
