@@ -5,9 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Welcome, Lord Zussy</title>
   <style>
-    :root{
-      --bg:#0a0b10; --panel:#11131a; --edge:#1c2130; --accent:#b48bff; --accent2:#7cffb8; --text:#e8ecf1;
-    }
+    :root{ --bg:#0a0b10; --panel:#11131a; --edge:#1c2130; --accent:#A60000; --text:#e8ecf1; }
     *{box-sizing:border-box}
     html,body{height:100%;margin:0}
     body{
@@ -18,44 +16,20 @@
       font-family: ui-rounded, system-ui, -apple-system, Segoe UI, Roboto, "Helvetica Neue", Arial;
       overflow:hidden;
     }
-    .crt:before{
-      content:""; position:fixed; inset:0; pointer-events:none;
-      background:linear-gradient(rgba(255,255,255,.03),rgba(0,0,0,0) 2px); background-size:100% 3px;
-      mix-blend-mode:overlay; opacity:.4;
-    }
+    .crt:before{ content:""; position:fixed; inset:0; pointer-events:none; background:linear-gradient(rgba(255,255,255,.03),rgba(0,0,0,0) 2px); background-size:100% 3px; mix-blend-mode:overlay; opacity:.4; }
     .wrap{height:100%;display:grid;grid-template-rows:auto 1fr auto;gap:18px;}
     header{display:grid;place-items:center;padding-top:24px}
-    h1{
-      margin:0; font-weight:900; letter-spacing:.5px; text-transform:lowercase;
-      font-size:clamp(28px,5vw,56px);
-      text-shadow:0 2px 0 #000, 0 0 24px rgba(180,139,255,.35);
-    }
+    h1{ margin:0; font-weight:900; letter-spacing:.5px; text-transform:lowercase; font-size:clamp(28px,5vw,56px); text-shadow:0 2px 0 #000, 0 0 24px rgba(180,139,255,.15); }
     main{display:grid;place-items:center}
-    .panel{
-      background:linear-gradient(180deg, rgba(255,255,255,.06), rgba(255,255,255,.02));
-      border:1px solid var(--edge); border-radius:16px; padding:24px 28px;
-      box-shadow:inset 0 0 40px rgba(0,0,0,.35), 0 24px 80px rgba(0,0,0,.55);
-      max-width:min(94vw,900px);
-      text-align:center;
-    }
+    .panel{ background:linear-gradient(180deg, rgba(255,255,255,.06), rgba(255,255,255,.02)); border:1px solid var(--edge); border-radius:16px; padding:24px 28px; box-shadow:inset 0 0 40px rgba(0,0,0,.35), 0 24px 80px rgba(0,0,0,.55); max-width:min(94vw,900px); text-align:center; }
     .subtitle{opacity:.9;margin:8px 0 18px;font-size:clamp(14px,2.4vw,18px)}
     .d20-wrap{display:grid;place-items:center;gap:10px}
     .d20{width:min(70vw,420px);height:auto;cursor:pointer;filter:drop-shadow(0 10px 30px rgba(0,0,0,.6));transition:transform .2s ease}
     .d20:hover{transform:translateY(-2px) scale(1.01)}
     .hint{font-size:12px;opacity:.7}
-    .rollout{font-size:clamp(18px,3.2vw,28px); margin-top:8px; min-height:1.6em}
-    .glow{text-shadow:0 0 18px rgba(124,255,184,.55)}
     footer{display:grid;place-items:center;padding:0 0 24px}
-    .enter{
-      display:none; /* revealed after roll */
-      background:linear-gradient(180deg, #1a2030, #0f1320);
-      border:1px solid #2a334a; color:var(--text);
-      font-weight:700; text-transform:uppercase; letter-spacing:.08em;
-      padding:14px 20px; border-radius:12px; cursor:pointer;
-      box-shadow:0 12px 30px rgba(0,0,0,.5), inset 0 0 20px rgba(124,255,184,.12);
-      text-decoration:none;
-    }
-    .enter:focus{outline:2px solid var(--accent2); outline-offset:3px}
+    .enter{ display:none; background:linear-gradient(180deg, #1a2030, #0f1320); border:1px solid #2a334a; color:var(--text); font-weight:700; text-transform:uppercase; letter-spacing:.08em; padding:14px 20px; border-radius:12px; cursor:pointer; box-shadow:0 12px 30px rgba(0,0,0,.5), inset 0 0 20px rgba(124,255,184,.12); text-decoration:none; }
+    .enter:focus{outline:2px solid #7cffb8; outline-offset:3px}
     .enter.show{display:inline-block; animation:pop .35s ease}
     @keyframes pop{0%{transform:scale(.9);opacity:.0}100%{transform:scale(1);opacity:1}}
     .pixel{font-family: "Press Start 2P", monospace, ui-monospace; font-size: clamp(12px, 2.2vw, 14px)}
@@ -70,12 +44,11 @@
 
     <main>
       <div class="panel">
-        <div class="subtitle">Roll for initiative !</div>
+        <div class="subtitle">Roll for initiative!</div>
         <div class="d20-wrap">
           <!-- 3D/WebGL container with automatic SVG fallback -->
           <div id="d20Canvas" aria-label="D20 die — click to roll" class="d20" role="img"></div>
           <div class="hint pixel">click the die</div>
-          <div class="rollout" id="rollout"></div>
         </div>
       </div>
     </main>
@@ -88,166 +61,136 @@
   <!-- Three.js (for 3D) -->
   <script src="https://unpkg.com/three@0.158.0/build/three.min.js"></script>
   <script>
-    // Single source of truth for state/els
     const container = document.getElementById('d20Canvas');
-    const rollout = document.getElementById('rollout');
     const enterBtn = document.getElementById('enterBtn');
-
-    let rolled = false; // used by either path (3D or SVG)
-
-    // Utils
+    let rolled = false;
     const easeInOut = t => t<.5 ? 2*t*t : -1+(4-2*t)*t;
 
-    // --- SVG FALLBACK (pixel-style) ---
+    // ——— SVG FALLBACK (flat die with #A60000 shades + number on face) ———
     function mountSVGDie(){
       container.innerHTML = `
         <svg id="svgDie" class="d20" viewBox="0 0 512 512" aria-label="D20 die (SVG)">
           <defs>
-            <linearGradient id="grad" x1="0" x2="1" y1="0" y2="1">
-              <stop offset="0%" stop-color="#2c2f47"/>
-              <stop offset="100%" stop-color="#161a2a"/>
+            <linearGradient id="shade" x1="0" x2="1" y1="0" y2="1">
+              <stop offset="0%" stop-color="#A60000"/>
+              <stop offset="60%" stop-color="#7d0000"/>
+              <stop offset="100%" stop-color="#4d0000"/>
             </linearGradient>
-            <linearGradient id="edge" x1="0" y1="0" x2="1" y2="1">
-              <stop offset="0%" stop-color="#7cffb8" stop-opacity=".85"/>
-              <stop offset="100%" stop-color="#b48bff" stop-opacity=".85"/>
-            </linearGradient>
-            <filter id="glow">
-              <feGaussianBlur stdDeviation="6" result="b"/>
-              <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
-            </filter>
+            <filter id="glow"><feGaussianBlur stdDeviation="6" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
           </defs>
-          <polygon points="256,16 480,160 400,464 112,464 32,160" fill="url(#grad)" stroke="url(#edge)" stroke-width="6" filter="url(#glow)"/>
-          <g stroke="#2f3650" stroke-width="2" opacity=".9">
+          <polygon points="256,16 480,160 400,464 112,464 32,160" fill="url(#shade)" stroke="#3a0000" stroke-width="6" filter="url(#glow)"/>
+          <g stroke="#3a0000" stroke-width="2" opacity=".9">
             <line x1="256" y1="16" x2="256" y2="496"/>
             <line x1="32" y1="160" x2="480" y2="160"/>
             <line x1="112" y1="464" x2="400" y2="464"/>
             <line x1="32" y1="160" x2="112" y2="464"/>
             <line x1="480" y1="160" x2="400" y2="464"/>
           </g>
-          <g id="numGroup">
-            <text id="num" x="256" y="290" text-anchor="middle" font-size="120" font-weight="900" fill="#eafdf5" class="glow">20</text>
-            <text id="caption" x="256" y="330" text-anchor="middle" font-size="18" fill="#a7ffdf" opacity=".0">(…rolling…)</text>
-          </g>
+          <text id="num" x="256" y="300" text-anchor="middle" font-size="140" font-weight="900" fill="#ffffff" style="paint-order: stroke; stroke: #200; stroke-width: 10px;">20</text>
         </svg>`;
 
       const svg = document.getElementById('svgDie');
       const num = document.getElementById('num');
-      const cap = document.getElementById('caption');
 
-      function fauxRollToThirtyTwo(){
+      function roll(){
         const keyframes = [3,14,7,18,11,19,9,15,6,12,17,8,13,10,16,5,4,2,1,20,32];
-        const total = 1800; const start = performance.now();
-        cap.setAttribute('opacity','1');
+        const total = 1500; const start = performance.now();
         function step(now){
-          const t = Math.min(1,(now-start)/total);
-          const idx = Math.floor(easeInOut(t)*(keyframes.length-1));
+          const t = Math.min(1,(now-start)/total); const idx = Math.floor(easeInOut(t)*(keyframes.length-1));
           num.textContent = keyframes[idx];
-          const wobble = (1-t)*8;
-          svg.style.transform = `rotate(${t*720}deg) translateY(${Math.sin(now/80)*wobble}px)`;
+          svg.style.transform = `rotate(${t*720}deg)`;
           if(t<1) requestAnimationFrame(step); else finalize();
         }
         requestAnimationFrame(step);
       }
-
       function finalize(){
-        rollout.innerHTML = '<span class="glow">You rolled: 32</span>';
+        num.textContent = '32';
         enterBtn.classList.add('show');
-        rolled = true;
       }
-
-      container.addEventListener('click', ()=>{ if(!rolled) fauxRollToThirtyTwo(); });
+      container.addEventListener('click', ()=>{ if(!rolled){ rolled = true; roll(); } });
     }
 
-    // --- THREE.JS (3D) ---
+    // ——— THREE.JS (3D) ———
     function mountThreeDie(){
-      // Create renderer (guard against WebGL issues)
       let renderer;
-      try {
-        renderer = new THREE.WebGLRenderer({ antialias:true, alpha:true });
-      } catch(e){ return false; }
+      try{ renderer = new THREE.WebGLRenderer({ antialias:true, alpha:true }); }catch(e){ return false; }
       if(!renderer) return false;
-      container.innerHTML = '';
-      container.appendChild(renderer.domElement);
+      container.innerHTML = ''; container.appendChild(renderer.domElement);
 
       const scene = new THREE.Scene();
-      const camera = new THREE.PerspectiveCamera(30, 16/9, 0.1, 100);
-      camera.position.set(0,0.8,5.5);
+      const camera = new THREE.PerspectiveCamera(30, 16/9, 0.1, 100); camera.position.set(0,0.8,5.5);
 
-      const amb = new THREE.AmbientLight(0xffffff,0.55); scene.add(amb);
-      const key = new THREE.DirectionalLight(0xb48bff,1.1); key.position.set(3,4,2); scene.add(key);
-      const rim = new THREE.DirectionalLight(0x7cffb8,0.9); rim.position.set(-3,2,-2); scene.add(rim);
+      const hemi = new THREE.HemisphereLight(0xfff0f0, 0x080808, 0.7); scene.add(hemi);
+      const key = new THREE.DirectionalLight(0xffffff, 1.0); key.position.set(3,4,2); scene.add(key);
+      const rim = new THREE.DirectionalLight(0xffaaaa, 0.8); rim.position.set(-3,2,-2); scene.add(rim);
 
       const geo = new THREE.IcosahedronGeometry(1.2,0);
-      const mat = new THREE.MeshStandardMaterial({ color:0x1a1f33, metalness:0.45, roughness:0.25 });
+      const mat = new THREE.MeshStandardMaterial({ color:0xA60000, metalness:0.4, roughness:0.3 });
       const mesh = new THREE.Mesh(geo,mat); scene.add(mesh);
       const edges = new THREE.EdgesGeometry(geo);
-      const edgeMat = new THREE.LineBasicMaterial({ color:0x9be9cc });
+      const edgeMat = new THREE.LineBasicMaterial({ color:0x3a0000 });
       const edgeLines = new THREE.LineSegments(edges, edgeMat); scene.add(edgeLines);
 
-      const stars = new THREE.Group(); scene.add(stars);
-      for(let i=0;i<160;i++){
-        const s = new THREE.Sprite(new THREE.SpriteMaterial({ color:0xffffff, opacity:0.14 }));
-        s.position.set((Math.random()-0.5)*8, (Math.random()-0.5)*4.5, (Math.random()-0.5)*4);
-        s.scale.setScalar(Math.random()*0.04+0.01); stars.add(s);
+      // Number on the face (sprite that hugs the front face)
+      const labelTex = (()=>{
+        const c = document.createElement('canvas'); c.width = c.height = 512; const ctx = c.getContext('2d');
+        // subtle radial shadow like Google dice
+        const grad = ctx.createRadialGradient(256,256,40, 256,256,256);
+        grad.addColorStop(0,'rgba(0,0,0,0)'); grad.addColorStop(1,'rgba(0,0,0,0.18)');
+        ctx.fillStyle = grad; ctx.beginPath(); ctx.arc(256,256,256,0,Math.PI*2); ctx.fill();
+        ctx.font = '900 300px system-ui, Segoe UI, Roboto, Arial'; ctx.fillStyle = '#fff'; ctx.textAlign='center'; ctx.textBaseline='middle';
+        ctx.lineWidth = 18; ctx.strokeStyle = '#200'; ctx.strokeText('20',256,280); ctx.fillText('20',256,280);
+        return new THREE.CanvasTexture(c);
+      })();
+      const labelMat = new THREE.SpriteMaterial({ map: labelTex, depthTest: false, depthWrite: false, transparent:true });
+      const label = new THREE.Sprite(labelMat); label.scale.set(1.2,1.2,1.2); label.position.set(0,0,1.21); scene.add(label);
+
+      function setLabel(n){
+        const ctx = labelTex.image.getContext('2d');
+        ctx.clearRect(0,0,512,512);
+        const grad = ctx.createRadialGradient(256,256,40, 256,256,256);
+        grad.addColorStop(0,'rgba(0,0,0,0)'); grad.addColorStop(1,'rgba(0,0,0,0.18)');
+        ctx.fillStyle = grad; ctx.beginPath(); ctx.arc(256,256,256,0,Math.PI*2); ctx.fill();
+        ctx.font = '900 300px system-ui, Segoe UI, Roboto, Arial'; ctx.fillStyle = '#fff'; ctx.textAlign='center'; ctx.textBaseline='middle';
+        ctx.lineWidth = 18; ctx.strokeStyle = '#200'; ctx.strokeText(String(n),256,280); ctx.fillText(String(n),256,280);
+        labelTex.needsUpdate = true;
       }
 
       function resize(){
-        const w = Math.min(container.clientWidth || 420, 880);
-        const h = Math.round(w * 9/16);
-        renderer.setSize(w,h,false);
-        camera.aspect = w/h; camera.updateProjectionMatrix();
+        const w = Math.min(container.clientWidth || 420, 880); const h = Math.round(w * 9/16);
+        renderer.setSize(w,h,false); camera.aspect = w/h; camera.updateProjectionMatrix();
       }
-      window.addEventListener('resize', resize);
-      resize();
+      window.addEventListener('resize', resize); resize();
 
       let spinning = true; let t0 = performance.now();
       function animate(now){
         const dt = (now - t0)/1000; t0 = now;
         if(spinning){ mesh.rotation.y += dt*0.6; mesh.rotation.x += dt*0.25; edgeLines.rotation.copy(mesh.rotation); }
-        renderer.render(scene,camera);
-        requestAnimationFrame(animate);
+        renderer.render(scene,camera); requestAnimationFrame(animate);
       }
       requestAnimationFrame(animate);
 
-      function spinToResult(){
-        if(rolled) return; rolled = true; spinning = false;
-        const startRot = mesh.rotation.clone();
-        const endRot = new THREE.Euler(startRot.x + Math.PI*2, startRot.y + Math.PI*2, startRot.z + Math.PI*1.5);
-        const dur = 1800; const tStart = performance.now();
+      function roll(){
+        const seq = [3,14,7,18,11,19,9,15,6,12,17,8,13,10,16,5,4,2,1,20,32];
+        const total = 1500; const start = performance.now();
         function step(now){
-          const t = Math.min(1,(now - tStart)/dur); const e = easeInOut(t);
-          mesh.rotation.set(
-            startRot.x + (endRot.x - startRot.x)*e,
-            startRot.y + (endRot.y - startRot.y)*e,
-            startRot.z + (endRot.z - startRot.z)*e
-          );
+          const t = Math.min(1,(now-start)/total); const idx = Math.floor(easeInOut(t)*(seq.length-1));
+          setLabel(seq[idx]);
+          mesh.rotation.set(mesh.rotation.x + 0.12, mesh.rotation.y + 0.22, mesh.rotation.z + 0.18);
           edgeLines.rotation.copy(mesh.rotation);
           if(t<1) requestAnimationFrame(step); else finalize();
         }
         requestAnimationFrame(step);
       }
+      function finalize(){ setLabel(32); enterBtn.classList.add('show'); }
 
-      function finalize(){
-        rollout.innerHTML = '<span class="glow">You rolled: 32</span>';
-        enterBtn.classList.add('show');
-      }
-
-      container.addEventListener('click', spinToResult);
+      container.addEventListener('click', ()=>{ if(!rolled){ rolled = true; spinning = false; roll(); }});
       return true;
     }
 
-    // Try 3D; if it fails, mount SVG fallback
-    const threeOk = (() => {
-      try {
-        const test = document.createElement('canvas');
-        const gl = test.getContext('webgl') || test.getContext('experimental-webgl');
-        return !!(window.THREE && gl);
-      } catch(e){ return false; }
-    })();
-
-    if(!threeOk || !mountThreeDie()) {
-      mountSVGDie();
-    }
+    // Try WebGL. If not available, fall back to SVG.
+    const webglOk = (()=>{ try{ const c=document.createElement('canvas'); return !!(c.getContext('webgl')||c.getContext('experimental-webgl')); }catch(e){ return false; } })();
+    if(!webglOk || !mountThreeDie()) { mountSVGDie(); }
   </script>
 </body>
 </html>
