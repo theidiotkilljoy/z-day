@@ -16,7 +16,7 @@
       font-family: ui-rounded, system-ui, -apple-system, Segoe UI, Roboto, "Helvetica Neue", Arial;
       overflow:hidden;
     }
-    .crt:before{ content:""; position:fixed; inset:0; pointer-events:none; background:linear-gradient(rgba(255,255,255,.03),rgba(0,0,0,0) 2px); background-size:100% 3px; mix-blend-mode:overlay; opacity:.26; }
+    .crt:before{ content:""; position:fixed; inset:0; pointer-events:none; background:linear-gradient(rgba(255,255,255,.03),rgba(0,0,0,0) 2px); background-size:100% 3px; mix-blend-mode:overlay; opacity:.24; }
 
     /* Tighter vertical spacing so the die sits higher */
     .wrap{height:100%;display:grid;grid-template-rows:auto 1fr auto;gap:6px;}
@@ -29,8 +29,8 @@
 
     .d20-wrap{display:grid;place-items:center;gap:6px}
     /* Reserve a square box so the die never gets clipped */
-    #d20Canvas{ width:clamp(280px, 62vw, 560px); height:clamp(280px, 62vw, 560px); position:relative; }
-    #d20Canvas canvas{ position:absolute; inset:0; width:100% !important; height:100% !important; display:block; }
+    #d20Canvas{ width:clamp(280px, 62vw, 560px); aspect-ratio: 1/1; min-height:280px; position:relative; }
+    #d20Canvas canvas, #d20Canvas svg{ position:absolute; inset:0; width:100%; height:100%; display:block; }
 
     .d20{cursor:pointer; filter:drop-shadow(0 10px 30px rgba(0,0,0,.6)); transition:transform .18s ease}
     .d20:hover{transform:translateY(-1px) scale(1.004)}
@@ -65,18 +65,18 @@
     </footer>
   </div>
 
-  <!-- Three.js (with shadows) -->
-  <script src="https://unpkg.com/three@0.158.0/build/three.min.js"></script>
+  <!-- LOCAL Three.js (no CDN). Place the file at: /vendor/three.min.js -->
+  <script src="vendor/three.min.js"></script>
   <script>
     const container = document.getElementById('d20Canvas');
     const enterBtn = document.getElementById('enterBtn');
     let rolled = false;
     const easeInOut = t => t<.5 ? 2*t*t : -1+(4-2*t)*t;
 
-    // SVG fallback (in case WebGL is disabled)
+    // ---------- SVG fallback (always-visible backup) ----------
     function mountSVGDie(){
       container.innerHTML = `
-        <svg id="svgDie" viewBox="0 0 512 512" aria-label="D20 die (SVG)" style="position:absolute;inset:0;width:100%;height:100%">
+        <svg id="svgDie" viewBox="0 0 512 512" aria-label="D20 die (SVG)">
           <defs>
             <linearGradient id="shade" x1="0" x2="1" y1="0" y2="1">
               <stop offset="0%" stop-color="#A60000"/>
@@ -112,44 +112,41 @@
       function finalize(){ num.textContent='32'; enterBtn.classList.add('show'); }
     }
 
+    // ---------- THREE.JS (3D) — shadowed edges + face-centered label ----------
     function mountThreeDie(){
+      if(!window.THREE){ mountSVGDie(); return; }
       const test=document.createElement('canvas');
       const webglOk=!!(test.getContext('webgl')||test.getContext('experimental-webgl'));
-      if(!webglOk || !window.THREE){ mountSVGDie(); return; }
+      if(!webglOk){ mountSVGDie(); return; }
 
-      // Renderer with soft shadows
       const renderer = new THREE.WebGLRenderer({ antialias:true, alpha:true });
       renderer.shadowMap.enabled = true;
       renderer.shadowMap.type = THREE.PCFSoftShadowMap;
       container.innerHTML='';
       container.appendChild(renderer.domElement);
 
-      // Scene / camera
       const scene = new THREE.Scene();
       const camera = new THREE.PerspectiveCamera(32, 1, 0.1, 100);
       camera.position.set(0,0.75,5.2);
 
-      // Lighting (Google-like soft red object with shadowed edges)
+      // Lights
       const hemi = new THREE.HemisphereLight(0xfff6f6, 0x0a0a12, 0.65); scene.add(hemi);
-      const key = new THREE.DirectionalLight(0xffffff, 1.05); key.position.set(3,4,2); key.castShadow = true;
-      key.shadow.mapSize.set(1024,1024); key.shadow.camera.near = 1; key.shadow.camera.far = 12; scene.add(key);
+      const key = new THREE.DirectionalLight(0xffffff, 1.05); key.position.set(3,4,2); key.castShadow = true; key.shadow.mapSize.set(1024,1024); key.shadow.camera.near=1; key.shadow.camera.far=12; scene.add(key);
       const rim = new THREE.DirectionalLight(0xffc0c0, 0.6); rim.position.set(-3,2,-2); scene.add(rim);
 
-      // Ground plane to catch shadow
+      // Ground for soft contact shadow
       const shadowMat = new THREE.ShadowMaterial({ opacity: 0.25 });
       const ground = new THREE.Mesh(new THREE.PlaneGeometry(20,20), shadowMat);
       ground.rotation.x = -Math.PI/2; ground.position.y = -1.55; ground.receiveShadow = true; scene.add(ground);
 
-      // Die geometry
+      // Die geometry + edges
       const geo = new THREE.IcosahedronGeometry(1.2,0);
-      const mat = new THREE.MeshStandardMaterial({ color:0xA60000, metalness:0.35, roughness:0.35, envMapIntensity:0.3 });
+      const mat = new THREE.MeshStandardMaterial({ color:0xA60000, metalness:0.35, roughness:0.35 });
       const mesh = new THREE.Mesh(geo,mat); mesh.castShadow = true; scene.add(mesh);
+      const edgeLines = new THREE.LineSegments(new THREE.EdgesGeometry(geo), new THREE.LineBasicMaterial({ color:0x2a0000, transparent:true, opacity:0.9 })); scene.add(edgeLines);
+      edgeLines.renderOrder = 0; mesh.renderOrder = 1; // edges under label
 
-      // Dark edge lines for the "shadowed edges" look
-      const edgeLines = new THREE.LineSegments(new THREE.EdgesGeometry(geo), new THREE.LineBasicMaterial({ color:0x2a0000, transparent:true, opacity:0.9 }));
-      edgeLines.position.copy(mesh.position); scene.add(edgeLines);
-
-      // Face/label data
+      // Face list
       const pos = geo.attributes.position; const index = geo.index; const faces=[];
       for(let i=0;i<index.count;i+=3){
         const a=index.getX(i), b=index.getX(i+1), c=index.getX(i+2);
@@ -165,7 +162,7 @@
       faces.forEach((f,i)=>{ const s=f.normal.dot(front); if(s>best){best=s; landing=i;} });
       const lf = faces[landing];
 
-      // Number on the landing face (plane, drawn above edges)
+      // Number label as plane on landing face
       const labelCanvas=document.createElement('canvas'); labelCanvas.width=labelCanvas.height=512; const lctx=labelCanvas.getContext('2d');
       function drawLabel(n){
         lctx.clearRect(0,0,512,512);
@@ -178,17 +175,15 @@
       drawLabel(20);
       const labelTex=new THREE.CanvasTexture(labelCanvas); labelTex.anisotropy = 8;
       const label=new THREE.Mesh(new THREE.PlaneGeometry(1,1), new THREE.MeshBasicMaterial({ map:labelTex, transparent:true, depthTest:false, depthWrite:false }));
-      label.renderOrder = 2; // draw after edges so it sits cleanly on the face
-      mesh.add(label);
-      const planeSize=lf.edge*0.92; // slightly inset from edges
-      label.scale.set(planeSize,planeSize,1);
+      label.renderOrder = 2; mesh.add(label);
+      const planeSize=lf.edge*0.92; label.scale.set(planeSize,planeSize,1);
       const q=new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0,0,1), lf.normal.clone().normalize());
       label.quaternion.copy(q);
       label.position.copy(lf.centroid.clone().add(lf.normal.clone().multiplyScalar(0.021)));
 
       // Sizing
       function resize(){
-        const w = container.getBoundingClientRect().width; const h = w; renderer.setSize(w,h,false); camera.aspect=1; camera.updateProjectionMatrix();
+        const w = container.getBoundingClientRect().width || container.clientWidth || 300; const h = w; renderer.setSize(w,h,false); camera.aspect=1; camera.updateProjectionMatrix();
       }
       new ResizeObserver(resize).observe(container); resize();
 
@@ -198,11 +193,11 @@
       requestAnimationFrame(animate);
 
       function alignFaceToCamera(face){
-        // 1) aim face normal at camera (+Z)
+        // Aim this face to camera
         const current = face.normal.clone().applyQuaternion(mesh.quaternion).normalize();
         const rotToFront = new THREE.Quaternion().setFromUnitVectors(current, new THREE.Vector3(0,0,1));
         mesh.quaternion.multiply(rotToFront); edgeLines.quaternion.copy(mesh.quaternion);
-        // 2) twist so a vertex is perfectly upright (so number is upright)
+        // Twist so a vertex is upright
         const va=face.va.clone().applyQuaternion(mesh.quaternion);
         const vb=face.vb.clone().applyQuaternion(mesh.quaternion);
         const vc=face.vc.clone().applyQuaternion(mesh.quaternion);
@@ -230,9 +225,12 @@
       function finalize(){ drawLabel(32); labelTex.needsUpdate=true; alignFaceToCamera(lf); enterBtn.classList.add('show'); }
 
       container.addEventListener('click', ()=>{ if(rolled) return; rolled=true; spinning=false; roll(); });
+
+      // If renderer somehow ends up 0x0 (rare), fallback to SVG so it's never blank
+      setTimeout(()=>{ const r=renderer.domElement.getBoundingClientRect(); if(r.width<40||r.height<40){ mountSVGDie(); } }, 200);
     }
 
-    // Boot 3D with fallback
+    // Boot: prefer 3D using local vendor file; fallback to SVG
     try { mountThreeDie(); } catch(e){ console.error(e); mountSVGDie(); }
   </script>
 </body>
